@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<!--
+
+  Created using /viewer/
+  Source can be edited via /viewer/iwatet/25/edit
+
+-->
+<head>
+<meta charset="utf-8">
+<title>Basic Map</title>
+
+<!-- Remember to insert your own API key in the URL below -->
+  
+<script type="text/javascript" src="http://osopenspacepro.ordnancesurvey.co.uk/osmapapi/openspace.js?key=43659536296237352656577659934363"></script>  
+  
+<!-- If you use OS OpenSpace Pro or OS OnDemand WMTS then use the relevant following URL instead: 
+  
+OS OpenSpace Pro - <script type="text/javascript" src="http://osopenspacepro.ordnancesurvey.co.uk/osmapapi/openspace.js?key=INSERT_YOUR_API_KEY_HERE"></script>
+  
+OS OnDemand WMTS - <script type="text/javascript" src="http://ondemandapi.ordnancesurvey.co.uk/osmapapi/openspace.js??key=INSERT_YOUR_API_KEY_HERE"></script>
+  
+-->
+
+<style>
+  html, body { height: 100%;}
+  #map {width: 80%; height: 80%; border:1px solid 
+  black;}
+</style>
+
+</head>  
+  
+<body onload="init()">
+
+<!-- The div below holds the map -->
+<h1>ScrapMyCar.com</h1><p>Please enter your town or postcode</p>
+<form onsubmit="return searchGazetteer();">
+<input type="text" value="" id="placename" size="50" maxlength="255"/>
+<input type="button" value="Find Place" onclick="searchGazetteer();"/>
+<input type="button" value="Find Postcode" onclick="searchPostcode();"/>
+</form>
+
+<div id="map"></div>
+
+<script>
+// Define the osMap variable
+
+var osMap,gazetteer;
+
+// This function creates the map and is called by the div in the HTML
+
+function init()
+
+  {
+    
+// Create new map
+    
+    osMap = new OpenSpace.Map('map');
+    
+// Set map centre in National Grid Eastings and Northings and select zoom level 0
+
+    osMap.setCenter(new OpenSpace.MapPoint(400000, 200000), 2);
+    
+// Assign gazetteer search
+    
+    gazetteer = new OpenSpace.Gazetteer();    
+	postcode = new OpenSpace.Postcode();
+	
+// Define where the markers file is
+    
+    var markersFile = "elv.csv";
+    
+// Load the markers file
+    
+    OpenLayers.loadURL(markersFile, null, this, parseFile, onFail);
+                               
+  }
+  
+  // This function parses through the text file to create the markers
+
+function parseFile(result)
+
+  {
+
+    var text = result.responseText;
+    
+// Split the file by line
+
+    var lines = text.split('\n');
+
+	// DEBUG: console.log("Lines: " + lines.length + "\n");
+
+/* Cycle through each line and split it by comma into columns then if there are exactly 3 resulting columns, pass the first one to the x variable, the second to the y variable. Create the marker position from these then add the popup text from the last column. Finally create the marker */
+    var gridProjection = new OpenSpace.GridProjection();
+	
+    for (var i = 0; i < lines.length; i++)
+    {
+      
+		var columns = lines[ i ].split(',');
+		
+		var x = parseFloat(columns[ 1 ]);
+        var y = parseFloat(columns[ 0 ]);
+		  
+		var lonlat = new OpenLayers.LonLat(x, y);
+		var pos = gridProjection.getMapPointFromLonLat(lonlat);
+
+        // var pos = new OpenSpace.MapPoint(x, y);
+		var popupText = columns[ 2 ] + "<br>" + columns[ 3 ] + "<br>" + columns[ 4 ] + "<br>" + columns[ 5 ] + "<br>Phone: " + columns [6];
+
+		// Set up icon
+		var size = new OpenLayers.Size(64, 64);
+		var offset = new OpenLayers.Pixel(-15, -29);
+		var icon = new OpenSpace.Icon('car2.png', size, offset);
+		var screensize = new OpenSpace.ScreenSize (220,240);
+        osMap.createMarker(pos, icon, popupText, screensize);
+		
+		// DEBUG: console.log("Line: " + i);
+
+    }
+	
+	// DEBUG: console.log("After loop\n");
+	
+	// Create clustering so markers near each other are given one numbered marker
+
+	clusterControl = new OpenSpace.Control.ClusterManager();
+	osMap.addControl(clusterControl);
+	clusterControl.activate();
+	
+    } 
+
+// This function creates an alert if the markers file fails to load
+                     
+function onFail(e)
+
+  {
+      alert("Cannot load markers file");
+  }
+  
+  // This function takes the postcode element of the form and then queries it's value
+
+function searchPostcode()
+
+  {
+
+    var query = document.getElementById("placename");
+    OpenLayers.Console.log("query: ", query.value);
+
+	// gazetteer.getLonLat(query.value, onResult);
+	postcode.getLonLat(query.value, onResult);
+	return false;
+  }
+  
+  // This function takes the placename element of the form and then queries it's value
+
+function searchGazetteer()
+
+  {
+
+    var query = document.getElementById("placename");
+    OpenLayers.Console.log("query: ", query.value);
+
+	gazetteer.getLonLat(query.value, onResult);
+	// postcode.getLonLat(query.value, onResult);
+	return false;
+  }
+
+// This function takes the result from the function above and then centres the map on it
+
+function onResult(mapPoint)
+
+  {
+    
+    if (mapPoint !== null)
+    osMap.setCenter(mapPoint, 5);
+    
+  }
+  
+</script>
+</body>
+</html>
